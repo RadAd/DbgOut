@@ -10,10 +10,12 @@
     <ClInclude Include="targetver.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="WinUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DbgOut.cpp" />
     <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="AboutMessage.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DbgOut.rc">

@@ -2,32 +2,7 @@
 //
 
 #include "stdafx.h"
-
-class WinHandle
-{
-public:
-    WinHandle(HANDLE value = NULL) : value_(value) {}
-
-    operator HANDLE() const { return value_; }
-
-    friend bool operator ==(WinHandle l, WinHandle r) { return l.value_ == r.value_; }
-    friend bool operator !=(WinHandle l, WinHandle r) { return l.value_ != r.value_; }
-    friend bool operator ==(HANDLE l, WinHandle r) { return l == r.value_; }
-    friend bool operator !=(HANDLE l, WinHandle r) { return l != r.value_; }
-    friend bool operator ==(WinHandle l, HANDLE r) { return l.value_ == r; }
-    friend bool operator !=(WinHandle l, HANDLE r) { return l.value_ != r; }
-
-    struct Deleter
-    {
-        typedef WinHandle pointer;
-        void operator()(WinHandle handle) const { CloseHandle(handle); }
-    };
-
-private:
-    HANDLE value_;
-};
-
-typedef std::unique_ptr<WinHandle, WinHandle::Deleter> HandlePtr;
+#include "WinUtils.h"
 
 HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
 WORD wAttributes = 0;
@@ -44,8 +19,22 @@ struct DbgData
     char    data[4096 - sizeof(DWORD)];
 };
 
-int main()
+int _tmain(int argc, _TCHAR* argv[])
 {
+	bool bDisplayABout = false;
+
+	for (int arg = 1; arg < argc; ++arg)
+	{
+		if (_tcscmp(argv[arg], L"/?") == 0)
+			bDisplayABout = true;
+	}
+
+	if (bDisplayABout)
+	{
+		DisplayAboutMessage(NULL);
+		return 0;
+	}
+
     hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
     CONSOLE_SCREEN_BUFFER_INFO csbi = {};
     GetConsoleScreenBufferInfo(hStdOut, &csbi);
