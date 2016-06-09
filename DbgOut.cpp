@@ -19,21 +19,49 @@ struct DbgData
     char    data[4096 - sizeof(DWORD)];
 };
 
+struct CompareNoCase
+{
+    bool operator() (const std::wstring& a, const std::wstring& b) const
+    {
+        return _tcsicmp(a.c_str(), b.c_str()) < 0;
+    }
+};
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	bool bDisplayABout = false;
+    std::set<DWORD> filterPid;
+    std::set<std::wstring, CompareNoCase> filterExe;
+    bool ret = 0;
+
+    // TODO Allow filter Pid and Exe together
+    // TODO Filter Exe using wildcards
 
 	for (int arg = 1; arg < argc; ++arg)
 	{
-		if (_tcscmp(argv[arg], L"/?") == 0)
-			bDisplayABout = true;
-	}
+        if (_tcscmp(argv[arg], L"/?") == 0)
+            bDisplayABout = true;
+        else if (_istdigit(argv[arg][0]))
+            filterPid.insert(_tstoi(argv[arg]));
+        else if (_istalpha(argv[arg][0]))
+            filterExe.insert(argv[arg]);
+        else
+        {
+            _ftprintf(stderr, L"Unknown argument: %s\n", argv[arg]);
+            ret = 1;
+        }
+    }
 
 	if (bDisplayABout)
 	{
 		DisplayAboutMessage(NULL);
 		return 0;
 	}
+
+    if (ret != 0)
+    {
+        return ret;
+    }
 
     hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
     CONSOLE_SCREEN_BUFFER_INFO csbi = {};
@@ -117,31 +145,45 @@ int _tmain(int argc, _TCHAR* argv[])
         FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_INTENSITY,
     };
     WORD bgColor = csbi.wAttributes & (BACKGROUND_BLUE | BACKGROUND_GREEN | BACKGROUND_RED | BACKGROUND_INTENSITY);
+    for (int i = 0; i < ARRAYSIZE(Colors); ++i)
+    {
+        if (Colors[i] == (csbi.wAttributes & (BACKGROUND_BLUE | BACKGROUND_GREEN | BACKGROUND_RED | BACKGROUND_INTENSITY)))
+            Colors[i] = (bgColor >> 4) | FOREGROUND_INTENSITY;
+    }
     while (true)
     {
         DWORD ret = ::WaitForSingleObject(hEventDataReady.get(), INFINITE);
 
         if (ret == WAIT_OBJECT_0)
         {
-            SYSTEMTIME rTimeDate;
-            GetLocalTime(&rTimeDate);
-            wchar_t strDate[256] = L"";
-            GetDateFormat(LOCALE_USER_DEFAULT, DATE_SHORTDATE, &rTimeDate, NULL, strDate, ARRAYSIZE(strDate));
-            wchar_t strTime[256] = L"";
-            GetTimeFormat(LOCALE_USER_DEFAULT, 0, &rTimeDate, NULL, strTime, ARRAYSIZE(strTime));
-
-            wchar_t strProcessName[MAX_PATH] = L"";
-            HandlePtr hProcess(OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pDBBuffer->dwProcessId));
-            if (hProcess)
+            if (filterPid.empty() || filterPid.find(pDBBuffer->dwProcessId) != filterPid.end())
             {
-                GetProcessImageFileName(hProcess.get(), strProcessName, ARRAYSIZE(strProcessName));
-            }
+                SYSTEMTIME rTimeDate;
+                GetLocalTime(&rTimeDate);
+                wchar_t strDate[256] = L"";
+                GetDateFormat(LOCALE_USER_DEFAULT, DATE_SHORTDATE, &rTimeDate, NULL, strDate, ARRAYSIZE(strDate));
+                wchar_t strTime[256] = L"";
+                GetTimeFormat(LOCALE_USER_DEFAULT, 0, &rTimeDate, NULL, strTime, ARRAYSIZE(strTime));
 
-            SetConsoleTextAttribute(hStdOut, bgColor | Colors[pDBBuffer->dwProcessId % ARRAYSIZE(Colors)]);
-            LPCTSTR strExeName = _tcsrchr(strProcessName, '\\');
-            strExeName = strExeName ? strExeName + 1 : strProcessName;
-            wprintf(L"%s %s %d %s ", strDate, strTime, pDBBuffer->dwProcessId, strExeName);
-            printf(pDBBuffer->data);
+                wchar_t strProcessName[MAX_PATH] = L"";
+                HandlePtr hProcess(OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pDBBuffer->dwProcessId));
+                if (hProcess)
+                {
+                    GetProcessImageFileName(hProcess.get(), strProcessName, ARRAYSIZE(strProcessName));
+                }
+
+                LPCTSTR strExeName = _tcsrchr(strProcessName, '\\');
+                strExeName = strExeName ? strExeName + 1 : strProcessName;
+                if (filterExe.empty() || filterExe.find(strExeName) != filterExe.end())
+                {
+                    SetConsoleTextAttribute(hStdOut, bgColor | FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_INTENSITY);
+                    wprintf(L"%s %s ", strDate, strTime);
+                    SetConsoleTextAttribute(hStdOut, bgColor | Colors[pDBBuffer->dwProcessId % ARRAYSIZE(Colors)]);
+                    wprintf(L"%d %s ", pDBBuffer->dwProcessId, strExeName);
+                    SetConsoleTextAttribute(hStdOut, csbi.wAttributes);
+                    printf(pDBBuffer->data);
+                }
+            }
             SetEvent(hEventBufferReady.get());
         }
     }
@@ -154,5 +196,5 @@ int _tmain(int argc, _TCHAR* argv[])
         pDBBuffer = NULL;
     }
 
-    return 0;
+    return ret;
 }
