@@ -1,3 +1,4 @@
+<!-- ![Icon](bug.ico) DbgOut -->
 <img src="bug.ico" width=32/> DebugOut
 ==========
 
