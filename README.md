@@ -1,4 +1,4 @@
-![Icon](bug.ico) DbgOut
+<img src="bug.ico" width=32/> DebugOut
 ==========
 
 Win32 command line program to view debug output
