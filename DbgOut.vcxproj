@@ -163,7 +163,7 @@
     <ResourceCompile Include="DbgOut.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="bug.ico" />
+    <Image Include="bug-black.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
