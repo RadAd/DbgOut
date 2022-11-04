@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "WinUtils.h"
+#include <string>
 
 HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
 WORD wAttributes = 0;
